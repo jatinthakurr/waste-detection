@@ -1,0 +1,11 @@
+*.pyc
+.DS_Store
+__pycache__/
+.venv/
+*.pt
+*.pth
+*.onnx
+*.weights
+runs/
+*.egg-info/
+.env

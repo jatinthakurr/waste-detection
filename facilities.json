@@ -1,0 +1,94 @@
+{
+  "center_search_location": {
+    "name": "Crossings Republik, Ghaziabad",
+    "lat": 28.629409,
+    "lon": 77.432905,
+    "source": "Crossings Republik geolocation reference"
+  },
+  "facilities": [
+    {
+      "id": "mc_ghaziabad_transfer_dundahera",
+      "name": "Ghaziabad Municipal Corporation - Dundahera Transfer / Collection Point",
+      "type": "municipal_transfer_station",
+      "address": "Dundahera / Sector area (serves Crossing Republik area), Ghaziabad, UP",
+      "lat": 28.63420,
+      "lon": 77.43968,
+      "phone": null,
+      "accepts_class_indices": [20,25,30,31,32,33,34,35,58,59], 
+      "notes": "Municipal transfer / primary collection hub used by Ghaziabad Nagar Nigam for mixed municipal solid waste and segregation. Best for general/non-recyclable & food waste drop-off; hazardous usually processed separately.",
+      "source": ["Dundahera locality coordinates & municipal transfer station references"]
+    },
+    {
+      "id": "ecowork_ghaziabad",
+      "name": "Ecowork (recycling / material recovery) - Ghaziabad (Meerut Road / Industrial area)",
+      "type": "recycling_facility",
+      "address": "Meerut Road Industrial Area / nearby Ghaziabad industrial corridor (Ecowork pickup / recycling service)",
+      "lat": 28.68596,
+      "lon": 77.43534,
+      "phone": null,
+      "accepts_class_indices": [0,4,5,6,7,8,10,11,12,24,26,27,28,29,36,37,39,40,41,42,43,44,45,46,47,48,49,50,52],
+      "notes": "Private recycling partner handling plastics, metals, glass, cans and many post-consumer recyclables; often supports collection drives and business pickup.",
+      "source": ["Local recyclers / industrial-area recyclers listing"]
+    },
+    {
+      "id": "ewaste_collection_ghaziabad",
+      "name": "E-Waste Collection / Authorized Recycler (Ghaziabad area)",
+      "type": "e-waste_recycler",
+      "address": "Authorized e-waste recycler / collection center serving Ghaziabad (local collection points / aggregators)",
+      "lat": 28.65250,
+      "lon": 77.41210,
+      "phone": null,
+      "accepts_class_indices": [1,11,54,52,53],
+      "notes": "Collection point for batteries, small electronics, chargers, etc. (Search for 'e-waste collection Ghaziabad' to find specific collection schedule / contact).",
+      "source": ["E-waste collection / authorized recycler public listings"]
+    },
+    {
+      "id": "hazmat_collection_point",
+      "name": "Hazmat / Hazardous Waste Collection Point (Regional / private)",
+      "type": "hazardous_collection",
+      "address": "Hazmat collection service (serves Ghaziabad region) — contact local municipal office for drop-off of batteries/chemicals",
+      "lat": 28.6460,
+      "lon": 77.4310,
+      "phone": null,
+      "accepts_class_indices": [1,11,54,55,56,57],
+      "notes": "Hazardous materials (batteries, bulbs, chemical containers, paint buckets) should be delivered to a specialized collection center. Municipal or authorized hazardous waste handlers may require appointments.",
+      "source": ["Municipal/hazardous waste handling policy and regional e-waste / hazardous listings"]
+    },
+    {
+      "id": "green_recyclers_local",
+      "name": "Local Scrap Aggregator / Recyclers (Crossings Republik / Sahibabad / Ghaziabad)",
+      "type": "aggregator_scrap_dealer",
+      "address": "Multiple local scrap dealers and aggregators around Sahibabad / Crossings Republik (doorstep pickup often available)",
+      "lat": 28.63600,
+      "lon": 77.43000,
+      "phone": null,
+      "accepts_class_indices": [2,3,4,5,6,7,8,10,12,24,26,27,28,29,36,37,39,40,41,43,44,45,46,47,48,49,50,51,52],
+      "notes": "Small local scrap buyers accept plastics, metal, glass, cardboard, and many recyclables — good for mixed household recyclables.",
+      "source": ["Local business listings / Justdial style aggregator pages"]
+    },
+    {
+      "id": "city_waste_center",
+      "name": "City Waste Center / Bulk Waste Drop-off (Ghaziabad)",
+      "type": "city_waste_center",
+      "address": "Main City Waste Center (Ghaziabad municipal) — serves the Crossing Republik region; open hours and acceptance depend on municipal rules",
+      "lat": 28.64000,
+      "lon": 77.42000,
+      "phone": null,
+      "accepts_class_indices": [20,25,30,31,32,33,34,35,58,59],
+      "notes": "Municipal center for general municipal solid waste (bulk drop-off, not for hazardous or e-waste).",
+      "source": ["Ghaziabad municipal waste management info"]
+    },
+    {
+      "id": "karo_sambhav_partner",
+      "name": "Karo Sambhav / Reverse Logistics Partner (collection aggregator)",
+      "type": "takeback_program_partner",
+      "address": "Collection points / partner outlets in NCR (search Karo Sambhav partners for nearest collection point)",
+      "lat": 28.6530,
+      "lon": 77.4315,
+      "phone": null,
+      "accepts_class_indices": [1,11,54,52],
+      "notes": "Karo Sambhav and similar e-waste/takeback firms run localized collection drives / partner shops. Useful for responsible battery and e-waste disposal.",
+      "source": ["Karo Sambhav public partner listings / collection programs"]
+    }
+  ]
+}
