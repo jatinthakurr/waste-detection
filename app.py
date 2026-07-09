@@ -30,7 +30,8 @@ for key, val in {
     'user_lat': 28.6080,
     'user_lon': 77.4580,
     'captured_objects': [],
-    'conf_threshold': 0.3
+    'conf_threshold': 0.3,
+    'chat_history': []
 }.items():
     if key not in st.session_state:
         st.session_state[key] = val
@@ -94,6 +95,17 @@ st.markdown("""
         border: 1px solid #f1f5f9;
         text-align: center;
         box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.08);
+    }
+    .custom-card {
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .custom-card:hover {
+        box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.08);
     }
     .stat-val { font-size: 1.75rem; font-weight: 700; color: #0f172a; }
     .stat-lbl { font-size: 0.8rem; color: #64748b; font-weight: 500; text-transform: uppercase; margin-top: 4px; }
@@ -132,6 +144,78 @@ conf_threshold = st.sidebar.slider(
     0.1, 1.0, float(st.session_state["conf_threshold"]), 0.05
 )
 st.session_state["conf_threshold"] = conf_threshold
+
+# 2. Manual Waste Entry Section
+with st.sidebar.expander("➕ Log Waste Manually", expanded=False):
+    with st.form("manual_log_form"):
+        m_name = st.text_input("Item Name", value="Plastic Bottle")
+        m_cat = st.selectbox("Category", ["Recyclable", "Non-Recyclable", "Hazardous"])
+        m_qty = st.number_input("Quantity", min_value=1, value=1)
+        m_notes = st.text_input("Notes", value="Manually logged")
+        m_submit = st.form_submit_button("Log Item")
+        if m_submit:
+            norm_cls = m_name.lower().replace(" ", "_")
+            rec_key = settings.CLASS_TO_REC_KEY.get(norm_cls, 'plastic' if m_cat == "Recyclable" else 'non_recyclable')
+            impact = settings.IMPACT_FACTORS.get(rec_key, {'co2': 0, 'water': 0, 'energy': 0})
+            st.session_state["captured_objects"].append({
+                "object": m_name,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "category": m_cat,
+                "quantity": m_qty,
+                "notes": m_notes,
+                "co2_saved": round(impact['co2'] * m_qty, 3),
+                "water_saved": round(impact['water'] * m_qty, 3),
+                "energy_saved": round(impact['energy'] * m_qty, 3)
+            })
+            st.success("Logged successfully!")
+            st.rerun()
+
+# 3. Smart Eco Chatbot Assistant
+with st.sidebar.expander("🤖 Eco AI Assistant", expanded=True):
+    st.caption("Ask questions about recycling or waste management:")
+    
+    # Pre-defined buttons for quick questions
+    q_cols = st.columns(2)
+    with q_cols[0]:
+        if st.button("Pizza Box?", key="q_pizza"):
+            query = "pizza box"
+            st.session_state["chat_history"].append(("user", query))
+            st.session_state["chat_history"].append(("assistant", settings.ECO_KNOWLEDGE_BASE["pizza box"]))
+    with q_cols[1]:
+        if st.button("Batteries?", key="q_battery"):
+            query = "battery"
+            st.session_state["chat_history"].append(("user", query))
+            st.session_state["chat_history"].append(("assistant", settings.ECO_KNOWLEDGE_BASE["battery"]))
+            
+    # Chat output
+    chat_container = st.container(height=200)
+    with chat_container:
+        for role, text in st.session_state["chat_history"]:
+            if role == "user":
+                st.markdown(f"🧑 **You**: {text}")
+            else:
+                st.markdown(f"🤖 **Eco AI**: {text}")
+                
+    # Text input
+    chat_input = st.text_input("Ask something...", key="chat_input_text")
+    if st.button("Send", key="send_chat_btn"):
+        if chat_input.strip():
+            query = chat_input.strip().lower()
+            st.session_state["chat_history"].append(("user", chat_input))
+            
+            # Simple keyword matching search
+            reply = "I'm not fully sure about that item. Generally, if it is clean paper, plastic bottle, metal, or glass, it is recyclable. If dirty, contaminated, or organic, dispose of it in general waste or compost."
+            for k, val in settings.ECO_KNOWLEDGE_BASE.items():
+                if k in query or query in k:
+                    reply = val
+                    break
+            
+            st.session_state["chat_history"].append(("assistant", reply))
+            st.rerun()
+            
+    if st.button("Clear Chat", key="clear_chat_history"):
+        st.session_state["chat_history"] = []
+        st.rerun()
 
 # Main layout cols
 col1, col2 = st.columns([1.6, 1.0])
@@ -221,15 +305,32 @@ with col1:
                 st.session_state['latest_detection'] = detected_cls
                 render_results(detected_cls, result_placeholder)
                 
-                btn_label = f"📸 Log {detected_cls.replace('_', ' ').title()} to History"
-                if st.button(btn_label, key="log_browser_cam"):
-                    st.session_state["captured_objects"].append({
-                        "object": helper.remove_dash_from_class_name(detected_cls),
-                        "timestamp": datetime.now().strftime("%H:%M:%S"),
-                        "category": "Recyclable" if detected_cls.lower() in settings.RECYCLABLE else ("Hazardous" if detected_cls.lower() in settings.HAZARDOUS else "Non-Recyclable")
-                    })
-                    st.success("Logged successfully!")
-                    st.rerun()
+                with st.expander("📝 Edit and Log item to History", expanded=True):
+                    with st.form("log_form_browser_cam"):
+                        norm_cls = detected_cls.lower().replace(" ", "_")
+                        default_cat = "Recyclable" if norm_cls in settings.RECYCLABLE else ("Hazardous" if norm_cls in settings.HAZARDOUS else "Non-Recyclable")
+                        
+                        edit_name = st.text_input("Item Name", value=helper.remove_dash_from_class_name(detected_cls))
+                        edit_cat = st.selectbox("Category", ["Recyclable", "Non-Recyclable", "Hazardous"], index=["Recyclable", "Non-Recyclable", "Hazardous"].index(default_cat))
+                        edit_qty = st.number_input("Quantity / Count", min_value=1, value=1)
+                        edit_notes = st.text_input("Notes (e.g., Cleaned, sorted)", value="Cleaned & ready")
+                        
+                        submit_log = st.form_submit_button("💾 Save Item to History Dashboard")
+                        if submit_log:
+                            rec_key = settings.CLASS_TO_REC_KEY.get(norm_cls, 'non_recyclable')
+                            impact = settings.IMPACT_FACTORS.get(rec_key, {'co2': 0, 'water': 0, 'energy': 0})
+                            st.session_state["captured_objects"].append({
+                                "object": edit_name,
+                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "category": edit_cat,
+                                "quantity": edit_qty,
+                                "notes": edit_notes,
+                                "co2_saved": round(impact['co2'] * edit_qty, 3),
+                                "water_saved": round(impact['water'] * edit_qty, 3),
+                                "energy_saved": round(impact['energy'] * edit_qty, 3)
+                            })
+                            st.success("Logged successfully!")
+                            st.rerun()
             else:
                 st.info("No items detected. Try adjustments to confidence threshold or light/angle.")
                 
@@ -261,15 +362,32 @@ with col1:
                     st.session_state['latest_detection'] = detected_cls
                     render_results(detected_cls, result_placeholder)
                     
-                    btn_label = f"📸 Log {detected_cls.replace('_', ' ').title()} to History"
-                    if st.button(btn_label, key="log_upload_img"):
-                        st.session_state["captured_objects"].append({
-                            "object": helper.remove_dash_from_class_name(detected_cls),
-                            "timestamp": datetime.now().strftime("%H:%M:%S"),
-                            "category": "Recyclable" if detected_cls.lower() in settings.RECYCLABLE else ("Hazardous" if detected_cls.lower() in settings.HAZARDOUS else "Non-Recyclable")
-                        })
-                        st.success("Logged successfully!")
-                        st.rerun()
+                    with st.expander("📝 Edit and Log item to History", expanded=True):
+                        with st.form("log_form_upload_img"):
+                            norm_cls = detected_cls.lower().replace(" ", "_")
+                            default_cat = "Recyclable" if norm_cls in settings.RECYCLABLE else ("Hazardous" if norm_cls in settings.HAZARDOUS else "Non-Recyclable")
+                            
+                            edit_name = st.text_input("Item Name", value=helper.remove_dash_from_class_name(detected_cls))
+                            edit_cat = st.selectbox("Category", ["Recyclable", "Non-Recyclable", "Hazardous"], index=["Recyclable", "Non-Recyclable", "Hazardous"].index(default_cat))
+                            edit_qty = st.number_input("Quantity / Count", min_value=1, value=1)
+                            edit_notes = st.text_input("Notes (e.g., Cleaned, sorted)", value="Cleaned & ready")
+                            
+                            submit_log = st.form_submit_button("💾 Save Item to History Dashboard")
+                            if submit_log:
+                                rec_key = settings.CLASS_TO_REC_KEY.get(norm_cls, 'non_recyclable')
+                                impact = settings.IMPACT_FACTORS.get(rec_key, {'co2': 0, 'water': 0, 'energy': 0})
+                                st.session_state["captured_objects"].append({
+                                    "object": edit_name,
+                                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                    "category": edit_cat,
+                                    "quantity": edit_qty,
+                                    "notes": edit_notes,
+                                    "co2_saved": round(impact['co2'] * edit_qty, 3),
+                                    "water_saved": round(impact['water'] * edit_qty, 3),
+                                    "energy_saved": round(impact['energy'] * edit_qty, 3)
+                                })
+                                st.success("Logged successfully!")
+                                st.rerun()
                 else:
                     st.info("No items detected.")
             else:
@@ -390,7 +508,7 @@ with col2:
 
 # 3. Bottom Dashboard (Analytics & Log History)
 st.markdown("---")
-st.markdown("## 📊 Environmental Analytics Dashboard")
+st.markdown("## 📊 Environmental Analytics & Savings Dashboard")
 
 history = st.session_state["captured_objects"]
 total_scans = len(history)
@@ -398,6 +516,11 @@ total_scans = len(history)
 rec_count = sum(1 for item in history if item.get('category') == 'Recyclable')
 non_rec_count = sum(1 for item in history if item.get('category') == 'Non-Recyclable')
 haz_count = sum(1 for item in history if item.get('category') == 'Hazardous')
+
+# Calculate ecological savings
+total_co2 = sum(item.get('co2_saved', 0.0) for item in history)
+total_water = sum(item.get('water_saved', 0.0) for item in history)
+total_energy = sum(item.get('energy_saved', 0.0) for item in history)
 
 m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
 
@@ -438,6 +561,31 @@ with m_col5:
     <div class="stat-card">
         <div class="stat-val" style="color:#0284c7;">{len(st.session_state["unique_classes"])}</div>
         <div class="stat-lbl">Unique Waste Types</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Ecological Savings Cards
+st.markdown("### 🍃 Resource Savings Tracker")
+s_col1, s_col2, s_col3 = st.columns(3)
+with s_col1:
+    st.markdown(f"""
+    <div class="stat-card" style="border-top: 4px solid #10b981; margin-bottom: 1.5rem;">
+        <div class="stat-val" style="color:#10b981;">{total_co2:.2f} kg</div>
+        <div class="stat-lbl">CO₂ Emissions Avoided</div>
+    </div>
+    """, unsafe_allow_html=True)
+with s_col2:
+    st.markdown(f"""
+    <div class="stat-card" style="border-top: 4px solid #0284c7; margin-bottom: 1.5rem;">
+        <div class="stat-val" style="color:#0284c7;">{total_water:.1f} L</div>
+        <div class="stat-lbl">Water Resources Saved</div>
+    </div>
+    """, unsafe_allow_html=True)
+with s_col3:
+    st.markdown(f"""
+    <div class="stat-card" style="border-top: 4px solid #f59e0b; margin-bottom: 1.5rem;">
+        <div class="stat-val" style="color:#f59e0b;">{total_energy:.1f} kWh</div>
+        <div class="stat-lbl">Energy Saved</div>
     </div>
     """, unsafe_allow_html=True)
 

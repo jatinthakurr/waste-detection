@@ -77,3 +77,29 @@ CLASS_TO_REC_KEY = {
     'plastic_bottle': 'plastic', 'reuseable_paper': 'paper', 'scrap_paper': 'paper',
     'stick': 'organic'
 }
+
+# Environmental impact savings per category (units in kg CO2, liters water, kWh energy saved per unit recycled)
+IMPACT_FACTORS = {
+    'metal': {'co2': 1.62, 'water': 24.5, 'energy': 14.0},
+    'plastic': {'co2': 0.83, 'water': 12.0, 'energy': 5.8},
+    'glass': {'co2': 0.32, 'water': 0.9, 'energy': 1.2},
+    'cardboard': {'co2': 0.65, 'water': 19.8, 'energy': 4.1},
+    'paper': {'co2': 0.55, 'water': 26.0, 'energy': 4.4},
+    'organic': {'co2': 0.92, 'water': 5.0, 'energy': 0.0},  # organic composting avoids landfill methane
+    'hazardous': {'co2': 0.15, 'water': 2.0, 'energy': 0.5},
+    'non_recyclable': {'co2': 0.0, 'water': 0.0, 'energy': 0.0}
+}
+
+# Local knowledge base for common recycling queries
+ECO_KNOWLEDGE_BASE = {
+    "pizza box": "If the pizza box is greasy or has stuck cheese, the greasy parts cannot be recycled and should be composted or put in general waste. Clean cardboard parts can be recycled!",
+    "glass": "Glass bottles and jars are 100% recyclable and can be recycled endlessly. Wash them first. Broken glass or mirrors should not go in the recycling bin as they damage sorting equipment.",
+    "plastic": "Look for the resin identification code (1 to 7). Types 1 (PET) and 2 (HDPE) are highly recyclable. Thin films, plastic bags, and dirty wrappers usually belong in non-recyclable waste.",
+    "paper": "Clean paper, newspapers, magazines, and mail are fully recyclable. Avoid recycling shredded paper in open bins, wet paper, or paper coated with plastic/wax.",
+    "battery": "Batteries should NEVER go in the regular recycling or trash bin! They are hazardous and can cause fires. Dispose of them only at designated electronic waste/hazardous waste drop-off centers.",
+    "light bulb": "Incandescent bulbs go to regular trash, but LED and fluorescent (CFL) bulbs contain toxic materials or metals and must be taken to hazardous waste collection centers.",
+    "compost": "Organic matter like food scraps, coffee grounds, and garden trimmings can be composted. Avoid adding meat, dairy, or oil to home compost piles to prevent pests.",
+    "metal": "Aluminum and steel cans are highly recyclable. Empty them and rinse off food residues. Aluminum foil is also recyclable if it is clean and rolled into a ball.",
+    "e-waste": "Electronic waste contains valuable metals but also hazardous chemicals. Take old phones, laptops, and chargers to authorized e-waste collection centers."
+}
+

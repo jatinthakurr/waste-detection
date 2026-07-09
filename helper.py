@@ -198,9 +198,19 @@ def play_webcam(model, result_placeholder=None, render_results=None):
                 # Show Capture Button in sidebar
                 btn_key = f"cap_{st.session_state['frame_count']}"
                 if capture_placeholder.button(f"📸 Capture {remove_dash_from_class_name(stable_obj)}", key=btn_key):
+                    norm_cls = stable_obj.lower().replace(" ", "_")
+                    cat = "Recyclable" if norm_cls in settings.RECYCLABLE else ("Hazardous" if norm_cls in settings.HAZARDOUS else "Non-Recyclable")
+                    rec_key = settings.CLASS_TO_REC_KEY.get(norm_cls, 'non_recyclable')
+                    impact = settings.IMPACT_FACTORS.get(rec_key, {'co2': 0, 'water': 0, 'energy': 0})
                     st.session_state["captured_objects"].append({
                         "object": remove_dash_from_class_name(stable_obj),
-                        "timestamp": datetime.now().strftime("%H:%M:%S")
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "category": cat,
+                        "quantity": 1,
+                        "notes": "Captured via live webcam feed",
+                        "co2_saved": round(impact['co2'], 3),
+                        "water_saved": round(impact['water'], 3),
+                        "energy_saved": round(impact['energy'], 3)
                     })
                     st.session_state["frozen_object"] = stable_obj
                     st.session_state["camera_running"] = False
