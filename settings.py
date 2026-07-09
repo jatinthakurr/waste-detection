@@ -15,7 +15,7 @@ RECYCLABLE = [
     'drink_carton', 'corrugated_carton', 'meal_carton', 'pizza_box',
     'paper_cup', 'glass_jar', 'metal_lid', 'magazine_paper',
     'wrapping_paper', 'normal_paper', 'paper_bag', 'plastified_paper_bag',
-    'cardboard_box', 'can', 'plastic_bottle', 'reuseable_paper'
+    'cardboard_box', 'can', 'plastic_bottle', 'reuseable_paper', 'scrap_metal'
 ]
 
 NON_RECYCLABLE = [
