@@ -198,9 +198,12 @@ with st.sidebar.expander("🤖 Eco AI Assistant", expanded=True):
     # Chat output using native components
     chat_container = st.container(height=220)
     with chat_container:
-        for role, text in st.session_state["chat_history"]:
-            with st.chat_message(role):
-                st.write(text)
+        if not st.session_state["chat_history"]:
+            st.info("👋 Welcome! Ask me anything about how to segregate or recycle items (e.g., 'how to recycle aerosol').")
+        else:
+            for role, text in st.session_state["chat_history"]:
+                with st.chat_message(role):
+                    st.write(text)
                 
     # Chat input at bottom
     chat_input = st.chat_input("Ask about recycling...")
@@ -627,10 +630,18 @@ with db_col2:
             file_name=f"waste_logs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
             mime="text/csv"
         )
-        if st.button("🧹 Clear History Logs"):
-            st.session_state["captured_objects"] = []
-            st.success("History cleared!")
-            st.rerun()
+        action_cols = st.columns(2)
+        with action_cols[0]:
+            if st.button("🧹 Clear History Logs", use_container_width=True):
+                st.session_state["captured_objects"] = []
+                st.success("History cleared!")
+                st.rerun()
+        with action_cols[1]:
+            if st.button("🗑️ Undo Last Log", use_container_width=True):
+                if st.session_state["captured_objects"]:
+                    removed = st.session_state["captured_objects"].pop()
+                    st.success(f"Removed '{removed['object']}'!")
+                    st.rerun()
     else:
         st.info("No items have been logged in the current session.")
 
