@@ -155,19 +155,27 @@ with st.sidebar.expander("➕ Log Waste Manually", expanded=False):
         m_submit = st.form_submit_button("Log Item")
         if m_submit:
             norm_cls = m_name.lower().replace(" ", "_")
-            rec_key = settings.CLASS_TO_REC_KEY.get(norm_cls, 'plastic' if m_cat == "Recyclable" else 'non_recyclable')
+            resolved_cat = m_cat
+            if norm_cls in settings.RECYCLABLE:
+                resolved_cat = "Recyclable"
+            elif norm_cls in settings.HAZARDOUS:
+                resolved_cat = "Hazardous"
+            elif norm_cls in settings.NON_RECYCLABLE:
+                resolved_cat = "Non-Recyclable"
+                
+            rec_key = settings.CLASS_TO_REC_KEY.get(norm_cls, 'plastic' if resolved_cat == "Recyclable" else 'non_recyclable')
             impact = settings.IMPACT_FACTORS.get(rec_key, {'co2': 0, 'water': 0, 'energy': 0})
             st.session_state["captured_objects"].append({
                 "object": m_name,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "category": m_cat,
+                "category": resolved_cat,
                 "quantity": m_qty,
                 "notes": m_notes,
                 "co2_saved": round(impact['co2'] * m_qty, 3),
                 "water_saved": round(impact['water'] * m_qty, 3),
                 "energy_saved": round(impact['energy'] * m_qty, 3)
             })
-            st.success("Logged successfully!")
+            st.success(f"Logged successfully as {resolved_cat}!")
             st.rerun()
 
 # 3. Smart Eco Chatbot Assistant
@@ -395,30 +403,34 @@ with col1:
                     f.write(uploaded_file.read())
                     
                 vid = cv2.VideoCapture(str(temp_path))
-                st_frame = st.empty()
-                
-                while vid.isOpened():
-                    ret, frame = vid.read()
-                    if not ret:
-                        break
-                    frame = cv2.resize(frame, (640, 480))
+                try:
+                    st_frame = st.empty()
                     
-                    res = model.predict(frame, conf=conf_threshold, verbose=False)
-                    names = model.names
-                    
-                    if len(res[0].boxes) > 0:
-                        top_box = sorted(res[0].boxes, key=lambda x: float(x.conf[0]), reverse=True)[0]
-                        cls_idx = int(top_box.cls[0])
-                        detected_cls = names[cls_idx]
-                        st.session_state['latest_detection'] = detected_cls
-                        render_results(detected_cls, result_placeholder)
+                    while vid.isOpened():
+                        ret, frame = vid.read()
+                        if not ret:
+                            break
+                        frame = cv2.resize(frame, (640, 480))
                         
-                    res_plotted = res[0].plot()
-                    st_frame.image(res_plotted, channels="BGR")
-                
-                vid.release()
-                if temp_path.exists():
-                    temp_path.unlink()
+                        res = model.predict(frame, conf=conf_threshold, verbose=False)
+                        names = model.names
+                        
+                        if len(res[0].boxes) > 0:
+                            top_box = sorted(res[0].boxes, key=lambda x: float(x.conf[0]), reverse=True)[0]
+                            cls_idx = int(top_box.cls[0])
+                            detected_cls = names[cls_idx]
+                            st.session_state['latest_detection'] = detected_cls
+                            render_results(detected_cls, result_placeholder)
+                            
+                        res_plotted = res[0].plot()
+                        st_frame.image(res_plotted, channels="BGR")
+                finally:
+                    vid.release()
+                    if temp_path.exists():
+                        try:
+                            temp_path.unlink()
+                        except Exception:
+                            pass
                 st.success("Video processing finished.")
                 
     elif input_mode == "📹 Live Stream (Local OpenCV)":
