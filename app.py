@@ -187,31 +187,53 @@ with st.sidebar.expander("🤖 Eco AI Assistant", expanded=True):
             st.session_state["chat_history"].append(("user", query))
             st.session_state["chat_history"].append(("assistant", settings.ECO_KNOWLEDGE_BASE["battery"]))
             
-    # Chat output
-    chat_container = st.container(height=200)
+    # Chat output using native components
+    chat_container = st.container(height=220)
     with chat_container:
         for role, text in st.session_state["chat_history"]:
-            if role == "user":
-                st.markdown(f"🧑 **You**: {text}")
-            else:
-                st.markdown(f"🤖 **Eco AI**: {text}")
+            with st.chat_message(role):
+                st.write(text)
                 
-    # Text input
-    chat_input = st.text_input("Ask something...", key="chat_input_text")
-    if st.button("Send", key="send_chat_btn"):
-        if chat_input.strip():
-            query = chat_input.strip().lower()
-            st.session_state["chat_history"].append(("user", chat_input))
-            
-            # Simple keyword matching search
-            reply = "I'm not fully sure about that item. Generally, if it is clean paper, plastic bottle, metal, or glass, it is recyclable. If dirty, contaminated, or organic, dispose of it in general waste or compost."
-            for k, val in settings.ECO_KNOWLEDGE_BASE.items():
-                if k in query or query in k:
-                    reply = val
+    # Chat input at bottom
+    chat_input = st.chat_input("Ask about recycling...")
+    if chat_input:
+        query = chat_input.strip().lower()
+        st.session_state["chat_history"].append(("user", chat_input))
+        
+        # 1. Check exact or partial match in ECO_KNOWLEDGE_BASE
+        reply = None
+        for k, val in settings.ECO_KNOWLEDGE_BASE.items():
+            if k in query or query in k:
+                reply = val
+                break
+                
+        # 2. If not found, check against YOLO classes
+        if not reply:
+            matched_cls = None
+            clean_query = query.replace(" ", "_").replace("-", "_")
+            for cls_name in list(settings.CLASS_TO_REC_KEY.keys()):
+                if cls_name in clean_query or clean_query in cls_name:
+                    matched_cls = cls_name
                     break
             
-            st.session_state["chat_history"].append(("assistant", reply))
-            st.rerun()
+            if matched_cls:
+                rec_key = settings.CLASS_TO_REC_KEY[matched_cls]
+                rec_text = settings.RECOMMENDATIONS.get(rec_key, "Dispose of responsibly in the general waste bin.")
+                
+                category = "Non-Recyclable"
+                if matched_cls in settings.RECYCLABLE:
+                    category = "Recyclable"
+                elif matched_cls in settings.HAZARDOUS:
+                    category = "Hazardous"
+                
+                reply = f"**{matched_cls.replace('_', ' ').title()}** is classified as **{category}**.\n\n*Recommendation*: {rec_text}"
+        
+        # 3. Fallback generic reply
+        if not reply:
+            reply = "I'm not fully sure about that item. Generally, if it is clean paper, plastic bottle, metal, or glass, it is recyclable. If dirty, contaminated, or organic, dispose of it in general waste or compost."
+            
+        st.session_state["chat_history"].append(("assistant", reply))
+        st.rerun()
             
     if st.button("Clear Chat", key="clear_chat_history"):
         st.session_state["chat_history"] = []
@@ -219,6 +241,34 @@ with st.sidebar.expander("🤖 Eco AI Assistant", expanded=True):
 
 # Main layout cols
 col1, col2 = st.columns([1.6, 1.0])
+
+def render_log_form(detected_cls, form_key):
+    with st.expander("📝 Edit and Log item to History", expanded=True):
+        with st.form(form_key):
+            norm_cls = detected_cls.lower().replace(" ", "_")
+            default_cat = "Recyclable" if norm_cls in settings.RECYCLABLE else ("Hazardous" if norm_cls in settings.HAZARDOUS else "Non-Recyclable")
+            
+            edit_name = st.text_input("Item Name", value=helper.remove_dash_from_class_name(detected_cls))
+            edit_cat = st.selectbox("Category", ["Recyclable", "Non-Recyclable", "Hazardous"], index=["Recyclable", "Non-Recyclable", "Hazardous"].index(default_cat))
+            edit_qty = st.number_input("Quantity / Count", min_value=1, value=1)
+            edit_notes = st.text_input("Notes (e.g., Cleaned, sorted)", value="Cleaned & ready")
+            
+            submit_log = st.form_submit_button("💾 Save Item to History Dashboard")
+            if submit_log:
+                rec_key = settings.CLASS_TO_REC_KEY.get(norm_cls, 'non_recyclable')
+                impact = settings.IMPACT_FACTORS.get(rec_key, {'co2': 0, 'water': 0, 'energy': 0})
+                st.session_state["captured_objects"].append({
+                    "object": edit_name,
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "category": edit_cat,
+                    "quantity": edit_qty,
+                    "notes": edit_notes,
+                    "co2_saved": round(impact['co2'] * edit_qty, 3),
+                    "water_saved": round(impact['water'] * edit_qty, 3),
+                    "energy_saved": round(impact['energy'] * edit_qty, 3)
+                })
+                st.success("Logged successfully!")
+                st.rerun()
 
 def render_results(obj_name, placeholder):
     if not obj_name:
@@ -304,33 +354,7 @@ with col1:
             if detected_cls:
                 st.session_state['latest_detection'] = detected_cls
                 render_results(detected_cls, result_placeholder)
-                
-                with st.expander("📝 Edit and Log item to History", expanded=True):
-                    with st.form("log_form_browser_cam"):
-                        norm_cls = detected_cls.lower().replace(" ", "_")
-                        default_cat = "Recyclable" if norm_cls in settings.RECYCLABLE else ("Hazardous" if norm_cls in settings.HAZARDOUS else "Non-Recyclable")
-                        
-                        edit_name = st.text_input("Item Name", value=helper.remove_dash_from_class_name(detected_cls))
-                        edit_cat = st.selectbox("Category", ["Recyclable", "Non-Recyclable", "Hazardous"], index=["Recyclable", "Non-Recyclable", "Hazardous"].index(default_cat))
-                        edit_qty = st.number_input("Quantity / Count", min_value=1, value=1)
-                        edit_notes = st.text_input("Notes (e.g., Cleaned, sorted)", value="Cleaned & ready")
-                        
-                        submit_log = st.form_submit_button("💾 Save Item to History Dashboard")
-                        if submit_log:
-                            rec_key = settings.CLASS_TO_REC_KEY.get(norm_cls, 'non_recyclable')
-                            impact = settings.IMPACT_FACTORS.get(rec_key, {'co2': 0, 'water': 0, 'energy': 0})
-                            st.session_state["captured_objects"].append({
-                                "object": edit_name,
-                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                "category": edit_cat,
-                                "quantity": edit_qty,
-                                "notes": edit_notes,
-                                "co2_saved": round(impact['co2'] * edit_qty, 3),
-                                "water_saved": round(impact['water'] * edit_qty, 3),
-                                "energy_saved": round(impact['energy'] * edit_qty, 3)
-                            })
-                            st.success("Logged successfully!")
-                            st.rerun()
+                render_log_form(detected_cls, "log_form_browser_cam")
             else:
                 st.info("No items detected. Try adjustments to confidence threshold or light/angle.")
                 
@@ -361,33 +385,7 @@ with col1:
                 if detected_cls:
                     st.session_state['latest_detection'] = detected_cls
                     render_results(detected_cls, result_placeholder)
-                    
-                    with st.expander("📝 Edit and Log item to History", expanded=True):
-                        with st.form("log_form_upload_img"):
-                            norm_cls = detected_cls.lower().replace(" ", "_")
-                            default_cat = "Recyclable" if norm_cls in settings.RECYCLABLE else ("Hazardous" if norm_cls in settings.HAZARDOUS else "Non-Recyclable")
-                            
-                            edit_name = st.text_input("Item Name", value=helper.remove_dash_from_class_name(detected_cls))
-                            edit_cat = st.selectbox("Category", ["Recyclable", "Non-Recyclable", "Hazardous"], index=["Recyclable", "Non-Recyclable", "Hazardous"].index(default_cat))
-                            edit_qty = st.number_input("Quantity / Count", min_value=1, value=1)
-                            edit_notes = st.text_input("Notes (e.g., Cleaned, sorted)", value="Cleaned & ready")
-                            
-                            submit_log = st.form_submit_button("💾 Save Item to History Dashboard")
-                            if submit_log:
-                                rec_key = settings.CLASS_TO_REC_KEY.get(norm_cls, 'non_recyclable')
-                                impact = settings.IMPACT_FACTORS.get(rec_key, {'co2': 0, 'water': 0, 'energy': 0})
-                                st.session_state["captured_objects"].append({
-                                    "object": edit_name,
-                                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                    "category": edit_cat,
-                                    "quantity": edit_qty,
-                                    "notes": edit_notes,
-                                    "co2_saved": round(impact['co2'] * edit_qty, 3),
-                                    "water_saved": round(impact['water'] * edit_qty, 3),
-                                    "energy_saved": round(impact['energy'] * edit_qty, 3)
-                                })
-                                st.success("Logged successfully!")
-                                st.rerun()
+                    render_log_form(detected_cls, "log_form_upload_img")
                 else:
                     st.info("No items detected.")
             else:

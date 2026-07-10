@@ -161,63 +161,64 @@ def play_webcam(model, result_placeholder=None, render_results=None):
     # -------------------------------------
     if st.session_state.get("camera_running"):
         vid = cv2.VideoCapture(source_webcam)
-        st_frame = st.empty()
-        status_info = st.empty()
-        capture_placeholder = st.sidebar.empty()
-        
-        while st.session_state.get("camera_running"):
-            ok, frame = vid.read()
-            if not ok:
-                st.error("Camera connection failed.")
-                break
-
-            st.session_state["frame_count"] += 1
-            _display_detected_frames(model, st_frame, frame)
-
-            # Stability Logic
-            detected = st.session_state.get("latest_detection")
-            if detected:
-                if detected == st.session_state.get("stable_detection"):
-                    st.session_state["stable_detection_count"] += 1
-                else:
-                    st.session_state["stable_detection"] = detected
-                    st.session_state["stable_detection_count"] = 1
-            else:
-                if st.session_state["stable_detection_count"] > 0:
-                    st.session_state["stable_detection_count"] -= 1
-                else:
-                    st.session_state["stable_detection"] = None
+        try:
+            st_frame = st.empty()
+            status_info = st.empty()
+            capture_placeholder = st.sidebar.empty()
             
-            # UI Updates for stable detections
-            stable_obj = st.session_state.get("stable_detection")
-            if stable_obj and st.session_state["stable_detection_count"] >= 3:
-                # Update main recommendation card
-                if result_placeholder and render_results:
-                    render_results(stable_obj, result_placeholder)
-                
-                # Show Capture Button in sidebar
-                btn_key = f"cap_{st.session_state['frame_count']}"
-                if capture_placeholder.button(f"📸 Capture {remove_dash_from_class_name(stable_obj)}", key=btn_key):
-                    norm_cls = stable_obj.lower().replace(" ", "_")
-                    cat = "Recyclable" if norm_cls in settings.RECYCLABLE else ("Hazardous" if norm_cls in settings.HAZARDOUS else "Non-Recyclable")
-                    rec_key = settings.CLASS_TO_REC_KEY.get(norm_cls, 'non_recyclable')
-                    impact = settings.IMPACT_FACTORS.get(rec_key, {'co2': 0, 'water': 0, 'energy': 0})
-                    st.session_state["captured_objects"].append({
-                        "object": remove_dash_from_class_name(stable_obj),
-                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "category": cat,
-                        "quantity": 1,
-                        "notes": "Captured via live webcam feed",
-                        "co2_saved": round(impact['co2'], 3),
-                        "water_saved": round(impact['water'], 3),
-                        "energy_saved": round(impact['energy'], 3)
-                    })
-                    st.session_state["frozen_object"] = stable_obj
-                    st.session_state["camera_running"] = False
-                    vid.release()
-                    st.rerun()
-            else:
-                capture_placeholder.empty()
+            while st.session_state.get("camera_running"):
+                ok, frame = vid.read()
+                if not ok:
+                    st.error("Camera connection failed.")
+                    break
 
-        vid.release()
-        st.session_state["camera_running"] = False
+                st.session_state["frame_count"] += 1
+                _display_detected_frames(model, st_frame, frame)
+
+                # Stability Logic
+                detected = st.session_state.get("latest_detection")
+                if detected:
+                    if detected == st.session_state.get("stable_detection"):
+                        st.session_state["stable_detection_count"] += 1
+                    else:
+                        st.session_state["stable_detection"] = detected
+                        st.session_state["stable_detection_count"] = 1
+                else:
+                    if st.session_state["stable_detection_count"] > 0:
+                        st.session_state["stable_detection_count"] -= 1
+                    else:
+                        st.session_state["stable_detection"] = None
+                
+                # UI Updates for stable detections
+                stable_obj = st.session_state.get("stable_detection")
+                if stable_obj and st.session_state["stable_detection_count"] >= 3:
+                    # Update main recommendation card
+                    if result_placeholder and render_results:
+                        render_results(stable_obj, result_placeholder)
+                    
+                    # Show Capture Button in sidebar
+                    btn_key = f"cap_{st.session_state['frame_count']}"
+                    if capture_placeholder.button(f"📸 Capture {remove_dash_from_class_name(stable_obj)}", key=btn_key):
+                        norm_cls = stable_obj.lower().replace(" ", "_")
+                        cat = "Recyclable" if norm_cls in settings.RECYCLABLE else ("Hazardous" if norm_cls in settings.HAZARDOUS else "Non-Recyclable")
+                        rec_key = settings.CLASS_TO_REC_KEY.get(norm_cls, 'non_recyclable')
+                        impact = settings.IMPACT_FACTORS.get(rec_key, {'co2': 0, 'water': 0, 'energy': 0})
+                        st.session_state["captured_objects"].append({
+                            "object": remove_dash_from_class_name(stable_obj),
+                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "category": cat,
+                            "quantity": 1,
+                            "notes": "Captured via live webcam feed",
+                            "co2_saved": round(impact['co2'], 3),
+                            "water_saved": round(impact['water'], 3),
+                            "energy_saved": round(impact['energy'], 3)
+                        })
+                        st.session_state["frozen_object"] = stable_obj
+                        st.session_state["camera_running"] = False
+                        break
+                else:
+                    capture_placeholder.empty()
+        finally:
+            vid.release()
+            st.session_state["camera_running"] = False
+            st.rerun()
