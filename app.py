@@ -9,7 +9,7 @@ from PIL import Image
 import folium
 import pandas as pd
 from datetime import datetime
-from recycling_center_helper import find_recycling_centers
+from recycling_center_helper import find_recycling_centers, get_all_nearby_facilities
 from geolocation_helper import get_user_location, get_address_from_coordinates
 from streamlit.components.v1 import html as st_html
 
@@ -462,8 +462,11 @@ with col2:
             icon=folium.Icon(color="blue", icon="info-sign")
         ).add_to(m)
         
-        obj = st.session_state.get('latest_detection', 'plastic_bottle')
-        centers = find_recycling_centers(obj, lat, lon)
+        obj = st.session_state.get('latest_detection')
+        if obj:
+            centers = find_recycling_centers(obj, lat, lon)
+        else:
+            centers = get_all_nearby_facilities(lat, lon, top_k=5)
         
         for c in centers:
             folium.Marker(

@@ -113,3 +113,37 @@ def find_recycling_centers(waste_type_name, user_lat, user_lon, top_k=3):
     # Sort by distance
     sorted_results = sorted(results, key=lambda x: x["distance_km"])
     return sorted_results[:top_k]
+
+def get_all_nearby_facilities(user_lat, user_lon, top_k=5):
+    facilities = load_facilities()
+    results = []
+
+    INDEX_CLASS = {v: k for k, v in CLASS_INDEX.items()}
+
+    for f in facilities:
+        lat = f.get("lat") or f.get("latitude")
+        lon = f.get("lng") or f.get("lon") or f.get("longitude")
+
+        if lat is None or lon is None:
+            continue
+
+        dist = haversine(user_lat, user_lon, lat, lon)
+        accepts = f.get("accepts_class_indices", [])
+        
+        accepted_waste_names = []
+        for idx in accepts:
+            if idx in INDEX_CLASS:
+                name = INDEX_CLASS[idx].replace("_", " ").title()
+                accepted_waste_names.append(name)
+
+        results.append({
+            "name": f.get("name", "Unknown Facility"),
+            "latitude": lat,
+            "longitude": lon,
+            "accepted_waste": accepted_waste_names,
+            "distance_km": round(dist, 2),
+            "hours": f.get("hours") or f.get("opening_hours") or "N/A"
+        })
+
+    sorted_results = sorted(results, key=lambda x: x["distance_km"])
+    return sorted_results[:top_k]
