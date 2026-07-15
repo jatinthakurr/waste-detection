@@ -178,77 +178,7 @@ with st.sidebar.expander("➕ Log Waste Manually", expanded=False):
             st.success(f"Logged successfully as {resolved_cat}!")
             st.rerun()
 
-# 3. Smart Eco Chatbot Assistant
-with st.sidebar.expander("🤖 Eco AI Assistant", expanded=True):
-    st.caption("Ask questions about recycling or waste management:")
-    
-    # Pre-defined buttons for quick questions
-    q_cols = st.columns(2)
-    with q_cols[0]:
-        if st.button("Pizza Box?", key="q_pizza"):
-            query = "pizza box"
-            st.session_state["chat_history"].append(("user", query))
-            st.session_state["chat_history"].append(("assistant", settings.ECO_KNOWLEDGE_BASE["pizza box"]))
-    with q_cols[1]:
-        if st.button("Batteries?", key="q_battery"):
-            query = "battery"
-            st.session_state["chat_history"].append(("user", query))
-            st.session_state["chat_history"].append(("assistant", settings.ECO_KNOWLEDGE_BASE["battery"]))
-            
-    # Chat output using native components
-    chat_container = st.container(height=220)
-    with chat_container:
-        if not st.session_state["chat_history"]:
-            st.info("👋 Welcome! Ask me anything about how to segregate or recycle items (e.g., 'how to recycle aerosol').")
-        else:
-            for role, text in st.session_state["chat_history"]:
-                with st.chat_message(role):
-                    st.write(text)
-                
-    # Chat input at bottom
-    chat_input = st.chat_input("Ask about recycling...")
-    if chat_input:
-        query = chat_input.strip().lower()
-        st.session_state["chat_history"].append(("user", chat_input))
-        
-        # 1. Check exact or partial match in ECO_KNOWLEDGE_BASE
-        reply = None
-        for k, val in settings.ECO_KNOWLEDGE_BASE.items():
-            if k in query or query in k:
-                reply = val
-                break
-                
-        # 2. If not found, check against YOLO classes
-        if not reply:
-            matched_cls = None
-            clean_query = query.replace(" ", "_").replace("-", "_")
-            for cls_name in list(settings.CLASS_TO_REC_KEY.keys()):
-                if cls_name in clean_query or clean_query in cls_name:
-                    matched_cls = cls_name
-                    break
-            
-            if matched_cls:
-                rec_key = settings.CLASS_TO_REC_KEY[matched_cls]
-                rec_text = settings.RECOMMENDATIONS.get(rec_key, "Dispose of responsibly in the general waste bin.")
-                
-                category = "Non-Recyclable"
-                if matched_cls in settings.RECYCLABLE:
-                    category = "Recyclable"
-                elif matched_cls in settings.HAZARDOUS:
-                    category = "Hazardous"
-                
-                reply = f"**{matched_cls.replace('_', ' ').title()}** is classified as **{category}**.\n\n*Recommendation*: {rec_text}"
-        
-        # 3. Fallback generic reply
-        if not reply:
-            reply = "I'm not fully sure about that item. Generally, if it is clean paper, plastic bottle, metal, or glass, it is recyclable. If dirty, contaminated, or organic, dispose of it in general waste or compost."
-            
-        st.session_state["chat_history"].append(("assistant", reply))
-        st.rerun()
-            
-    if st.button("Clear Chat", key="clear_chat_history"):
-        st.session_state["chat_history"] = []
-        st.rerun()
+# 3. Smart Eco Chatbot Assistant (Rendered as premium floating widget at the bottom of the page)
 
 # Main layout cols
 col1, col2 = st.columns([1.6, 1.0])
@@ -650,3 +580,758 @@ st.markdown("""
     EcoVision AI v2.1 • Intelligent Segregation Dashboard • Designed with premium clean UI aesthetics
 </div>
 """, unsafe_allow_html=True)
+
+# ----------------------------------------------------
+# PREMIUM FLOATING AI ECO-ASSISTANT WIDGET
+# ----------------------------------------------------
+import json
+
+kb_json = json.dumps(settings.ECO_KNOWLEDGE_BASE)
+class_rec_json = json.dumps(settings.CLASS_TO_REC_KEY)
+rec_json = json.dumps(settings.RECOMMENDATIONS)
+recyclable_json = json.dumps(settings.RECYCLABLE)
+hazardous_json = json.dumps(settings.HAZARDOUS)
+
+chatbot_html_template = r"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: transparent;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+    }
+    
+    /* Floating Action Button (FAB) */
+    .chat-fab {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 1000;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 2px solid rgba(255,255,255,0.15);
+    }
+    
+    .chat-fab:hover {
+        transform: scale(1.08) rotate(15deg);
+        box-shadow: 0 12px 28px rgba(16, 185, 129, 0.45);
+    }
+    
+    .chat-fab svg {
+        width: 28px;
+        height: 28px;
+        fill: currentColor;
+    }
+    
+    /* Pulsing effect for FAB */
+    .chat-fab::after {
+        content: '';
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        border: 2px solid #10b981;
+        opacity: 0.6;
+        animation: pulse 2s infinite;
+        z-index: -1;
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 0.6; }
+        100% { transform: scale(1.4); opacity: 0; }
+    }
+    
+    /* Chat Container Window */
+    .chat-window {
+        position: fixed;
+        bottom: 95px;
+        right: 20px;
+        width: 345px;
+        height: 500px;
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        box-shadow: 0 12px 40px rgba(15, 23, 42, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        display: flex;
+        flex-direction: column;
+        z-index: 1000;
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+        pointer-events: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+    }
+    
+    .chat-window.open {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+    }
+    
+    /* Header */
+    .chat-header {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        padding: 14px 18px;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .chat-header-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .bot-avatar-header {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+    
+    .chat-header-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        letter-spacing: -0.2px;
+    }
+    
+    .chat-header-subtitle {
+        font-size: 0.72rem;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 1px;
+    }
+    
+    .online-indicator {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background-color: #10b981;
+        box-shadow: 0 0 6px #10b981;
+        display: inline-block;
+        animation: pulse-green 1.5s infinite;
+    }
+    
+    @keyframes pulse-green {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.3); opacity: 0.5; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    
+    .close-btn {
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    
+    .close-btn:hover {
+        background: rgba(255,255,255,0.08);
+        color: white;
+    }
+    
+    /* Message History Area */
+    .chat-messages {
+        flex: 1;
+        padding: 16px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        scroll-behavior: smooth;
+    }
+    
+    /* Custom Scrollbar */
+    .chat-messages::-webkit-scrollbar {
+        width: 4px;
+    }
+    .chat-messages::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .chat-messages::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+    
+    /* Bubble layout */
+    .message {
+        display: flex;
+        gap: 8px;
+        max-width: 85%;
+        animation: messageFadeIn 0.25s ease-out forwards;
+    }
+    
+    @keyframes messageFadeIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .message.user {
+        align-self: flex-end;
+        flex-direction: row-reverse;
+    }
+    
+    .message.bot {
+        align-self: flex-start;
+    }
+    
+    .avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        flex-shrink: 0;
+    }
+    
+    .user .avatar {
+        background: #e0f2fe;
+    }
+    
+    .bot .avatar {
+        background: #ecfdf5;
+        border: 1px solid #d1fae5;
+    }
+    
+    .bubble {
+        padding: 8px 12px;
+        font-size: 0.84rem;
+        line-height: 1.45;
+        border-radius: 14px;
+        word-break: break-word;
+    }
+    
+    .user .bubble {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        color: white;
+        border-radius: 14px 14px 4px 14px;
+        box-shadow: 0 3px 8px rgba(2, 132, 199, 0.12);
+    }
+    
+    .bot .bubble {
+        background: white;
+        color: #1e293b;
+        border-radius: 14px 14px 14px 4px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.01);
+    }
+    
+    /* Suggestion Chips */
+    .suggestions-container {
+        padding: 0 16px 8px 16px;
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        white-space: nowrap;
+        scrollbar-width: none;
+        flex-shrink: 0;
+    }
+    
+    .suggestions-container::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .chip {
+        display: inline-block;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 5px 10px;
+        font-size: 0.74rem;
+        color: #475569;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.01);
+        font-weight: 500;
+    }
+    
+    .chip:hover {
+        border-color: #10b981;
+        color: #10b981;
+        background: #f0fdf4;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 6px rgba(16, 185, 129, 0.06);
+    }
+    
+    /* Input Area */
+    .chat-input-container {
+        padding: 10px 16px 16px 16px;
+        background: rgba(255, 255, 255, 0.5);
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    
+    .chat-input {
+        flex: 1;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 8px 12px;
+        font-size: 0.84rem;
+        outline: none;
+        background: white;
+        transition: all 0.2s;
+    }
+    
+    .chat-input:focus {
+        border-color: #10b981;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.08);
+    }
+    
+    .send-btn {
+        background: #10b981;
+        border: none;
+        color: white;
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 3px 8px rgba(16, 185, 129, 0.15);
+    }
+    
+    .send-btn:hover {
+        background: #059669;
+        transform: scale(1.02);
+    }
+    
+    .send-btn svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
+    }
+    
+    /* Typing Indicator */
+    .typing-indicator {
+        display: flex;
+        gap: 3px;
+        padding: 3px 6px;
+        align-items: center;
+    }
+    
+    .typing-dot {
+        width: 5px;
+        height: 5px;
+        background-color: #94a3b8;
+        border-radius: 50%;
+        animation: typingBounce 1.4s infinite ease-in-out both;
+    }
+    
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    
+    @keyframes typingBounce {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1); }
+    }
+    
+    .clear-action {
+        text-align: center;
+        font-size: 0.72rem;
+        color: #94a3b8;
+        text-decoration: underline;
+        cursor: pointer;
+        padding: 2px 0;
+        margin-top: -4px;
+        margin-bottom: 4px;
+        transition: color 0.2s;
+    }
+    
+    .clear-action:hover {
+        color: #ef4444;
+    }
+</style>
+</head>
+<body>
+
+<div class="chat-fab" id="chatFab">
+    <svg viewBox="0 0 24 24">
+        <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/>
+    </svg>
+</div>
+
+<div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+        <div class="chat-header-info">
+            <div class="bot-avatar-header">🤖</div>
+            <div>
+                <div class="chat-header-title">EcoVision AI Assistant</div>
+                <div class="chat-header-subtitle">
+                    <span class="online-indicator"></span>
+                    <span>AI Assistant • Online</span>
+                </div>
+            </div>
+        </div>
+        <button class="close-btn" id="closeBtn">
+            <svg style="width:18px;height:18px;fill:currentColor;" viewBox="0 0 24 24">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+        </button>
+    </div>
+    
+    <div class="chat-messages" id="chatMessages"></div>
+    
+    <div class="clear-action" id="clearBtn">Clear Conversation</div>
+    
+    <div class="suggestions-container" id="suggestionsContainer"></div>
+    
+    <div class="chat-input-container">
+        <input type="text" class="chat-input" id="chatInput" placeholder="Ask about recycling..." autocomplete="off">
+        <button class="send-btn" id="sendBtn">
+            <svg viewBox="0 0 24 24">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<script>
+    const ECO_KNOWLEDGE_BASE = __ECO_KNOWLEDGE_BASE__;
+    const CLASS_TO_REC_KEY = __CLASS_TO_REC_KEY__;
+    const RECOMMENDATIONS = __RECOMMENDATIONS__;
+    const RECYCLABLE = __RECYCLABLE__;
+    const HAZARDOUS = __HAZARDOUS__;
+    const SUGGESTIONS = [
+        { label: "🍕 Pizza Box?", query: "pizza box" },
+        { label: "🔋 Batteries?", query: "battery" },
+        { label: "🌱 Compost?", query: "compost" },
+        { label: "🍾 Glass Bottles?", query: "glass" },
+        { label: "🥫 Soda Cans?", query: "metal" }
+    ];
+    
+    const chatFab = document.getElementById('chatFab');
+    const chatWindow = document.getElementById('chatWindow');
+    const closeBtn = document.getElementById('closeBtn');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const suggestionsContainer = document.getElementById('suggestionsContainer');
+    
+    let chatHistory = [];
+    
+    function resizeIframe(expanded) {
+        const iframe = window.frameElement;
+        if (iframe) {
+            if (expanded) {
+                iframe.style.width = '370px';
+                iframe.style.height = '600px';
+                iframe.style.bottom = '20px';
+                iframe.style.right = '20px';
+            } else {
+                iframe.style.width = '90px';
+                iframe.style.height = '90px';
+                iframe.style.bottom = '15px';
+                iframe.style.right = '15px';
+            }
+        }
+    }
+    
+    function initIframeStyle() {
+        const iframe = window.frameElement;
+        if (iframe) {
+            iframe.style.position = 'fixed';
+            iframe.style.zIndex = '999999';
+            iframe.style.border = 'none';
+            iframe.style.background = 'transparent';
+            iframe.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            
+            let parent = iframe.parentElement;
+            while (parent && parent.tagName !== 'BODY') {
+                parent.style.background = 'transparent';
+                parent.style.border = 'none';
+                parent.style.boxShadow = 'none';
+                parent.style.padding = '0';
+                parent.style.margin = '0';
+                parent.style.overflow = 'visible';
+                parent.style.pointerEvents = 'none';
+                parent = parent.parentElement;
+            }
+            iframe.style.pointerEvents = 'auto';
+            resizeIframe(false);
+        }
+    }
+    
+    function loadChatHistory() {
+        const stored = localStorage.getItem('eco_chat_history');
+        if (stored) {
+            chatHistory = JSON.parse(stored);
+        } else {
+            chatHistory = [
+                {
+                    role: 'bot',
+                    text: '👋 Welcome! Ask me anything about how to segregate or recycle waste items (e.g., "how to recycle aerosol").'
+                }
+            ];
+        }
+        renderMessages();
+    }
+    
+    function saveChatHistory() {
+        localStorage.setItem('eco_chat_history', JSON.stringify(chatHistory));
+    }
+    
+    function renderMessages() {
+        chatMessages.innerHTML = '';
+        chatHistory.forEach(msg => {
+            appendMessageHTML(msg.role, msg.text);
+        });
+        scrollToBottom();
+    }
+    
+    function formatMarkdown(text) {
+        if (!text) return "";
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>');
+    }
+    
+    function appendMessageHTML(role, text) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${role}`;
+        
+        const avatarDiv = document.createElement('div');
+        avatarDiv.className = 'avatar';
+        avatarDiv.textContent = role === 'user' ? '👤' : '🤖';
+        
+        const bubbleDiv = document.createElement('div');
+        bubbleDiv.className = 'bubble';
+        bubbleDiv.innerHTML = formatMarkdown(text);
+        
+        msgDiv.appendChild(avatarDiv);
+        msgDiv.appendChild(bubbleDiv);
+        chatMessages.appendChild(msgDiv);
+    }
+    
+    function scrollToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    function renderSuggestions() {
+        suggestionsContainer.innerHTML = '';
+        SUGGESTIONS.forEach(s => {
+            const chip = document.createElement('div');
+            chip.className = 'chip';
+            chip.textContent = s.label;
+            chip.addEventListener('click', () => {
+                handleSendMessage(s.label, s.query);
+            });
+            suggestionsContainer.appendChild(chip);
+        });
+    }
+    
+    chatFab.addEventListener('click', () => {
+        chatWindow.classList.add('open');
+        chatFab.style.transform = 'scale(0) rotate(90deg)';
+        chatFab.style.opacity = '0';
+        chatFab.style.pointerEvents = 'none';
+        resizeIframe(true);
+        setTimeout(scrollToBottom, 100);
+    });
+    
+    closeBtn.addEventListener('click', () => {
+        chatWindow.classList.remove('open');
+        chatFab.style.transform = 'scale(1) rotate(0deg)';
+        chatFab.style.opacity = '1';
+        chatFab.style.pointerEvents = 'auto';
+        setTimeout(() => resizeIframe(false), 300);
+    });
+    
+    function processAIQuery(query) {
+        let cleanQuery = query.trim().toLowerCase();
+        
+        // Normalize common plurals
+        cleanQuery = cleanQuery
+            .replace(/\bbatteries\b/g, 'battery')
+            .replace(/\bbottles\b/g, 'bottle')
+            .replace(/\bcans\b/g, 'can')
+            .replace(/\bpapers\b/g, 'paper')
+            .replace(/\bcardboards\b/g, 'cardboard')
+            .replace(/\bglasses\b/g, 'glass');
+        
+        // 1. Check exact or partial match in ECO_KNOWLEDGE_BASE
+        for (let k in ECO_KNOWLEDGE_BASE) {
+            if (cleanQuery.includes(k) || k.includes(cleanQuery)) {
+                return ECO_KNOWLEDGE_BASE[k];
+            }
+        }
+        
+        // 2. Check for general materials
+        const materials = ['plastic', 'metal', 'glass', 'cardboard', 'paper', 'organic', 'hazardous'];
+        for (let mat of materials) {
+            if (cleanQuery.includes(mat)) {
+                const recText = RECOMMENDATIONS[mat];
+                let category = "Recyclable";
+                if (mat === 'hazardous') category = "Hazardous";
+                if (mat === 'organic') category = "Organic (Compostable)";
+                
+                const cleanMatName = mat.charAt(0).toUpperCase() + mat.slice(1);
+                return `**${cleanMatName}** products are generally classified as **${category}**.\n\n*Recommendation*: ${recText}`;
+            }
+        }
+        
+        // 3. Check match against YOLO classes
+        let matchedCls = null;
+        const normalizedQuery = cleanQuery.replace(/\s+/g, '_').replace(/-/g, '_');
+        
+        // Sort by length desc to prevent short names like 'can' from matching in longer sentences
+        const classNamesSorted = Object.keys(CLASS_TO_REC_KEY).sort((a, b) => b.length - a.length);
+        for (let clsName of classNamesSorted) {
+            // Word match check
+            const clsWords = clsName.split('_');
+            const isMatch = clsWords.every(word => {
+                if (word === 'can') {
+                    return new RegExp('\\bcan\\b').test(cleanQuery);
+                }
+                return cleanQuery.includes(word);
+            });
+            
+            if (isMatch) {
+                // Override 'can' verb false positives when other terms are present
+                if (clsName === 'can' && (cleanQuery.includes('cardboard') || cleanQuery.includes('paper') || cleanQuery.includes('plastic') || cleanQuery.includes('glass') || cleanQuery.includes('box'))) {
+                    continue;
+                }
+                matchedCls = clsName;
+                break;
+            }
+        }
+        
+        if (matchedCls) {
+            const recKey = CLASS_TO_REC_KEY[matchedCls];
+            const recText = RECOMMENDATIONS[recKey] || "Dispose of responsibly in the general waste bin.";
+            
+            let category = "Non-Recyclable";
+            if (RECYCLABLE.includes(matchedCls)) {
+                category = "Recyclable";
+            } else if (HAZARDOUS.includes(matchedCls)) {
+                category = "Hazardous";
+            }
+            
+            const cleanClsName = matchedCls.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            return `**${cleanClsName}** is classified as **${category}**.\n\n*Recommendation*: ${recText}`;
+        }
+        
+        return "I'm not fully sure about that item. Generally, if it is clean paper, plastic bottle, metal, or glass, it is recyclable. If dirty, contaminated, or organic, dispose of it in general waste or compost.";
+    }
+    
+    function handleSendMessage(text, query) {
+        if (!text || text.trim() === '') return;
+        const searchQuery = query || text;
+        
+        chatHistory.push({ role: 'user', text: text });
+        appendMessageHTML('user', text);
+        saveChatHistory();
+        scrollToBottom();
+        chatInput.value = '';
+        
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'message bot typing-message';
+        typingDiv.innerHTML = `
+            <div class="avatar">🤖</div>
+            <div class="bubble">
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+        `;
+        chatMessages.appendChild(typingDiv);
+        scrollToBottom();
+        
+        setTimeout(() => {
+            const typingMsg = document.querySelector('.typing-message');
+            if (typingMsg) typingMsg.remove();
+            
+            const reply = processAIQuery(searchQuery);
+            chatHistory.push({ role: 'bot', text: reply });
+            appendMessageHTML('bot', reply);
+            saveChatHistory();
+            scrollToBottom();
+        }, 500);
+    }
+    
+    clearBtn.addEventListener('click', () => {
+        chatHistory = [
+            {
+                role: 'bot',
+                text: '🧹 Conversation cleared! Ask me anything about recycling.'
+            }
+        ];
+        saveChatHistory();
+        renderMessages();
+    });
+    
+    sendBtn.addEventListener('click', () => {
+        handleSendMessage(chatInput.value);
+    });
+    
+    chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            handleSendMessage(chatInput.value);
+        }
+    });
+    
+    window.addEventListener('DOMContentLoaded', () => {
+        initIframeStyle();
+        loadChatHistory();
+        renderSuggestions();
+    });
+</script>
+</body>
+</html>
+"""
+
+chatbot_html = (
+    chatbot_html_template
+    .replace("__ECO_KNOWLEDGE_BASE__", kb_json)
+    .replace("__CLASS_TO_REC_KEY__", class_rec_json)
+    .replace("__RECOMMENDATIONS__", rec_json)
+    .replace("__RECYCLABLE__", recyclable_json)
+    .replace("__HAZARDOUS__", hazardous_json)
+)
+
+st_html(chatbot_html, height=100)
