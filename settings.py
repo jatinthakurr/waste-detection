@@ -40,14 +40,14 @@ HAZARDOUS = [
 
 # Waste recommendations
 RECOMMENDATIONS = {
-    'organic': "Ideal for decomposition and composting to create nutrient-rich soil.",
-    'plastic': "Do not burn! Reuse as a flower or plant pot, or recycle at specialized collection points.",
-    'metal': "Clean and reuse as a pencil holder, small plant pot, or recycle with metal waste.",
-    'glass': "Highly recyclable! Wash thoroughly and place in the glass recycling bin.",
-    'cardboard': "Recycle with paper products or reuse for storage and DIY projects.",
-    'paper': "Recycle or shred for use in composting.",
-    'hazardous': "Handle with care! Dispose of only at designated hazardous waste collection centers.",
-    'non_recyclable': "Dispose of responsibly in the general waste bin."
+    'organic': "Ideal for decomposition and composting to create nutrient-rich soil. Avoid adding meats or dairy to home compost to prevent pests.",
+    'plastic': "Do not burn! Rinse and dry before recycling. Reuse as a planter or storage. Only recycle plastics numbered 1, 2, and 5 in standard bins.",
+    'metal': "Clean and rinse thoroughly before recycling. You can also reuse as a pencil holder or small plant pot. Aluminum can be recycled infinitely!",
+    'glass': "Highly recyclable! Wash thoroughly, remove caps/lids, and place in the glass recycling bin. Sort by color if required locally.",
+    'cardboard': "Flatten boxes to save space. Recycle with paper products or reuse for storage. Ensure it's free from food grease.",
+    'paper': "Recycle or shred for use in composting. Do not recycle paper that is wet, greasy, or coated with plastic/wax.",
+    'hazardous': "Handle with care! Do NOT throw in regular trash. Dispose of only at designated hazardous waste collection centers.",
+    'non_recyclable': "Unfortunately, this item cannot be recycled. Dispose of responsibly in the general waste bin to avoid contaminating the recycling stream."
 }
 
 # Mapping specific classes to recommendation keys
@@ -100,6 +100,10 @@ ECO_KNOWLEDGE_BASE = {
     "light bulb": "Incandescent bulbs go to regular trash, but LED and fluorescent (CFL) bulbs contain toxic materials or metals and must be taken to hazardous waste collection centers.",
     "compost": "Organic matter like food scraps, coffee grounds, and garden trimmings can be composted. Avoid adding meat, dairy, or oil to home compost piles to prevent pests.",
     "metal": "Aluminum and steel cans are highly recyclable. Empty them and rinse off food residues. Aluminum foil is also recyclable if it is clean and rolled into a ball.",
-    "e-waste": "Electronic waste contains valuable metals but also hazardous chemicals. Take old phones, laptops, and chargers to authorized e-waste collection centers."
+    "e-waste": "Electronic waste contains valuable metals but also hazardous chemicals. Take old phones, laptops, and chargers to authorized e-waste collection centers.",
+    "styrofoam": "Styrofoam (EPS) is generally not accepted in curbside recycling because it breaks apart easily and contaminates other materials. Check for specialized local drop-off centers.",
+    "clothing": "Old clothes and textiles shouldn't go in the recycling bin. Donate usable items to charity, or take worn-out items to specialized textile recycling drops.",
+    "aerosol": "Empty aerosol cans can often be recycled with metals. If they still contain product, especially hazardous chemicals, they must go to a hazardous waste facility.",
+    "plastic bag": "Soft plastics like grocery bags and bubble wrap clog sorting machines. Do not put them in curbside bins. Return them to grocery store collection points instead."
 }
 

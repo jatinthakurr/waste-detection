@@ -1036,9 +1036,9 @@ chatbot_html_template = r"""
     const SUGGESTIONS = [
         { label: "🍕 Pizza Box?", query: "pizza box" },
         { label: "🔋 Batteries?", query: "battery" },
-        { label: "🌱 Compost?", query: "compost" },
-        { label: "🍾 Glass Bottles?", query: "glass" },
-        { label: "🥫 Soda Cans?", query: "metal" }
+        { label: "🛍️ Plastic Bags?", query: "plastic bag" },
+        { label: "📦 Styrofoam?", query: "styrofoam" },
+        { label: "👚 Old Clothes?", query: "clothing" }
     ];
     
     const chatFab = document.getElementById('chatFab');
